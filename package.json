@@ -1,0 +1,16 @@
+{
+  "name": "model-usage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deepseek": "tsx deepseek.ts",
+    "minimax": "tsx minimax.ts",
+    "kimi": "tsx kimi.ts",
+    "check": "tsx check-balance.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.0.0"
+  }
+}
