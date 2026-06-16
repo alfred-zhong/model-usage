@@ -21,12 +21,6 @@ type Provider = {
   fetch: (key: string) => Promise<{ balance: string; currency: string; extra?: string }>;
 };
 
-function formatCredits(n: number): string {
-  if (n < 1_000) return String(Math.round(n));
-  if (n < 1_000_000) return `${(n / 1_000).toFixed(2)}K`;
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  return `${(n / 1_000_000_000).toFixed(2)}B`;
-}
 
 const providers: Provider[] = [
   {
@@ -98,7 +92,6 @@ const providers: Provider[] = [
       return {
         balance: `${percentUsed.toFixed(2)}%`,
         currency: "percent",
-        extra: `${formatCredits(used)} / ${formatCredits(limit)} tokens`,
       };
     },
   },

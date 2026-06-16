@@ -4,13 +4,6 @@ const TIMEOUT_MS = 10_000;
 const json = process.argv.includes("--json");
 const cookie = process.env.MIMO_COOKIE;
 
-function formatCredits(n: number): string {
-  if (n < 1_000) return String(Math.round(n));
-  if (n < 1_000_000) return `${(n / 1_000).toFixed(2)}K`;
-  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  return `${(n / 1_000_000_000).toFixed(2)}B`;
-}
-
 if (!cookie) {
   console.error("错误: 请设置环境变量 MIMO_COOKIE");
   process.exit(1);
@@ -63,11 +56,10 @@ try {
       currency: "percent",
       used,
       limit,
-      extra: `${formatCredits(used)} / ${formatCredits(limit)} tokens`,
       raw: data,
     }, null, 2));
   } else {
-    console.log(`MiMo: ${percentUsed.toFixed(2)}% (${formatCredits(used)} / ${formatCredits(limit)} tokens)`);
+    console.log(`${percentUsed.toFixed(2)}%`);
   }
 } catch (err: unknown) {
   if (err instanceof Error && err.name === "AbortError") {
