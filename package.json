@@ -10,10 +10,14 @@
     "deepseek": "bun deepseek.ts || tsx deepseek.ts",
     "minimax": "bun minimax.ts || tsx minimax.ts",
     "kimi": "bun kimi.ts || tsx kimi.ts",
+    "mimo": "bun mimo.ts || tsx mimo.ts",
     "check": "bun check-balance.ts || tsx check-balance.ts"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "tsx": "^4.0.0"
+  },
+  "dependencies": {
+    "chrome-cookies-secure": "^3.0.2"
   }
 }
