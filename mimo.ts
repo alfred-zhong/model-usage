@@ -1,8 +1,8 @@
 const API_URL = "https://platform.xiaomimimo.com/api/v1/tokenPlan/usage";
-const CHROME_COOKIE_DOMAIN = "https://platform.xiaomimimo.com/";
 const TIMEOUT_MS = 10_000;
 
 const json = process.argv.includes("--json");
+const cookie = process.env.MIMO_COOKIE;
 
 function formatCredits(n: number): string {
   if (n < 1_000) return String(Math.round(n));
@@ -11,44 +11,8 @@ function formatCredits(n: number): string {
   return `${(n / 1_000_000_000).toFixed(2)}B`;
 }
 
-function classifyChromeCookieError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (/Cannot find module|cannot find the module/i.test(msg)) {
-    return "错误: chrome-cookies-secure 包未安装，请运行 `npm install chrome-cookies-secure` 或设置 MIMO_COOKIE 环境变量";
-  }
-  if (/Keychain|keychain|denied|permission/i.test(msg)) {
-    return "错误: Keychain 权限被拒，请到「系统设置 → 隐私与安全 → Keychain」授权，或直接设置 MIMO_COOKIE 环境变量";
-  }
-  if (/ENOENT|Cannot find|Chrome|not running/i.test(msg)) {
-    return "错误: Chrome 未运行或未登录 platform.xiaomimimo.com，请启动 Chrome 并登录后重试";
-  }
-  return `错误: 从 Chrome 读取 Cookie 失败: ${msg}`;
-}
-
-async function loadCookie(): Promise<string | null> {
-  if (process.env.MIMO_COOKIE) {
-    return process.env.MIMO_COOKIE;
-  }
-
-  // chrome-cookies-secure uses NAPI bindings that Bun does not support (uv_async_init).
-  // Detect Bun runtime and skip the fallback to avoid a SIGTRAP crash.
-  if (process.versions.bun) {
-    console.error("提示: Bun runtime 不支持 chrome-cookies-secure（NAPI libuv 不兼容），请设置 MIMO_COOKIE 环境变量或使用 `npx tsx mimo.ts`");
-    return null;
-  }
-
-  try {
-    const chrome = await import("chrome-cookies-secure");
-    const header = await chrome.getCookiesPromised(CHROME_COOKIE_DOMAIN, "header");
-    return header.replace(/^Cookie:\s*/i, "");
-  } catch (err) {
-    console.error(classifyChromeCookieError(err));
-    return null;
-  }
-}
-
-const cookie = await loadCookie();
 if (!cookie) {
+  console.error("错误: 请设置环境变量 MIMO_COOKIE");
   process.exit(1);
 }
 
