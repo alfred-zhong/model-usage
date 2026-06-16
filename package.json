@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "model-usage": "./check-balance.ts"
+  },
   "scripts": {
-    "deepseek": "tsx deepseek.ts",
-    "minimax": "tsx minimax.ts",
-    "kimi": "tsx kimi.ts",
-    "check": "tsx check-balance.ts"
+    "deepseek": "bun deepseek.ts || tsx deepseek.ts",
+    "minimax": "bun minimax.ts || tsx minimax.ts",
+    "kimi": "bun kimi.ts || tsx kimi.ts",
+    "check": "bun check-balance.ts || tsx check-balance.ts"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
