@@ -101,7 +101,7 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
   if (flagIdx !== -1 && args[flagIdx + 1]) return parseInt(args[flagIdx + 1], 10) * 1000;
   const envTtl = process.env.BALANCE_CACHE_TTL || settings.BALANCE_CACHE_TTL;
   if (envTtl) return parseInt(envTtl, 10) * 1000;
-  return 0;
+  return 60_000;
 }
 
 async function main() {
