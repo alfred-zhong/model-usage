@@ -11,7 +11,7 @@ type KimiRaw = {
 };
 
 const provider: Provider = {
-  name: "kimi",
+  name: "Kimi",
   envKey: "MOONSHOT_API_KEY",
   domains: ["api.moonshot.cn"],
   fetchRaw: async (key): Promise<ProviderResponse> => {

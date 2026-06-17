@@ -25,6 +25,6 @@ export type Provider = {
   envKey: string;
   /** ANTHROPIC_BASE_URL hostname 命中列表（已小写化） */
   domains: string[];
-  /** Provider 入口：返回结构化数据 + 原始响应 */
-  fetchRaw: (apiKey: string) => Promise<ProviderResponse>;
+  /** Provider 入口：返回结构化数据 + 原始响应；noop provider 不提供 */
+  fetchRaw?: (apiKey: string) => Promise<ProviderResponse>;
 };

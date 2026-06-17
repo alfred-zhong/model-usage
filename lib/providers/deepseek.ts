@@ -11,7 +11,7 @@ type DeepseekRaw = {
 };
 
 const provider: Provider = {
-  name: "deepseek",
+  name: "DeepSeek",
   envKey: "DEEPSEEK_API_KEY",
   domains: ["api.deepseek.com"],
   fetchRaw: async (key): Promise<ProviderResponse> => {
