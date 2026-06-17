@@ -7,9 +7,9 @@
     "model-usage": "./check-balance.ts"
   },
   "scripts": {
-    "deepseek": "bun deepseek.ts || tsx deepseek.ts",
-    "minimax": "bun minimax.ts || tsx minimax.ts",
-    "kimi": "bun kimi.ts || tsx kimi.ts",
+    "deepseek": "bun lib/providers/deepseek.ts || tsx lib/providers/deepseek.ts",
+    "minimax": "bun lib/providers/minimax.ts || tsx lib/providers/minimax.ts",
+    "kimi": "bun lib/providers/kimi.ts || tsx lib/providers/kimi.ts",
     "check": "bun check-balance.ts || tsx check-balance.ts"
   },
   "devDependencies": {
