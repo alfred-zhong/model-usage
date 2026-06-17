@@ -17,7 +17,7 @@ type MinimaxRaw = {
 };
 
 const provider: Provider = {
-  name: "minimax",
+  name: "MiniMax",
   envKey: "MINIMAX_API_KEY",
   domains: ["www.minimaxi.com", "api.minimaxi.com"],
   fetchRaw: async (key): Promise<ProviderResponse> => {

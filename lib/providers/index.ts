@@ -4,8 +4,10 @@
 import deepseek from "./deepseek.ts";
 import minimax from "./minimax.ts";
 import kimi from "./kimi.ts";
+import xiaomimo from "./xiaomimo.ts";
+import volcengine from "./volcengine.ts";
 import type { Provider } from "./types.ts";
 
-export const providers: Provider[] = [deepseek, minimax, kimi];
+export const providers: Provider[] = [deepseek, minimax, kimi, xiaomimo, volcengine];
 
 export type { Provider, BalanceResult, ProviderResponse } from "./types.ts";

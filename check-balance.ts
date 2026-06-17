@@ -86,6 +86,16 @@ async function main() {
     return;
   }
 
+  // Noop provider: 无 API，直接输出厂商名称
+  if (!provider.fetchRaw) {
+    if (json) {
+      console.log(JSON.stringify({ provider: provider.name, model, noApi: true }));
+    } else {
+      console.log(provider.name);
+    }
+    return;
+  }
+
   // check cache
   if (ttlMs > 0 && !force) {
     const cache = loadCache();
@@ -95,7 +105,7 @@ async function main() {
       if (json) {
         console.log(JSON.stringify({ provider: provider.name, model, cached: true, ...result }));
       } else {
-        console.log(result.extra ? `${result.balance}，${result.extra}` : result.balance);
+        console.log(result.extra ? `${provider.name} (${result.balance}，${result.extra})` : `${provider.name} (${result.balance})`);
       }
       return;
     }
@@ -135,7 +145,7 @@ async function main() {
         ...(formatted.extra ? { extra: formatted.extra } : {}),
       }));
     } else {
-      console.log(formatted.extra ? `${formatted.balance}，${formatted.extra}` : formatted.balance);
+      console.log(formatted.extra ? `${provider.name} (${formatted.balance}，${formatted.extra})` : `${provider.name} (${formatted.balance})`);
     }
   } catch (err: unknown) {
     if (json) {
