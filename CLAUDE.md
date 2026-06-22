@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目性质
 
-命令行小工具集，用于查询 AI 模型服务商（DeepSeek、MiniMax、Moonshot/Kimi）的账户余额。无构建步骤——直接由 `bun` 或 `tsx` 解释执行。
+命令行小工具集，用于查询 AI 模型服务商（DeepSeek、MiniMax、Moonshot/Kimi）的账户余额。另有 Xiaomi Mimo 和火山引擎为 noop provider（无余额 API，仅占位显示厂商名称）。无构建步骤——直接由 `bun` 或 `tsx` 解释执行。
 
 ## 运行命令
 
@@ -35,6 +35,8 @@ lib/
     deepseek.ts         # DeepSeek Provider（含 CLI 自调用入口）
     kimi.ts             # Kimi/Moonshot Provider
     minimax.ts          # MiniMax Token Plan Provider
+    xiaomimo.ts         # Xiaomi Mimo noop Provider（无 API，仅占位）
+    volcengine.ts       # 火山引擎 noop Provider（无 API，仅占位）
 ```
 
 - `check-balance.ts` 与 `lib/providers/*.ts` 共用 `provider.fetchRaw()`，单一真相源。
@@ -46,12 +48,12 @@ lib/
 `providers: Provider[]` 数组是唯一的扩展点。每个 Provider 描述：
 
 ```
-{ name, envKey, domains, fetchRaw(key) }
+{ name, envKey, domains, fetchRaw?(key) }
 ```
 
 - `domains`：`ANTHROPIC_BASE_URL` 的 hostname（已小写化）命中列表中的任一项即匹配该 Provider。
-- `envKey`：对应的 API Key 环境变量名。
-- `fetchRaw`：返回 `{ result: BalanceResult, raw: unknown }`。`result` 是结构化数据（`balance: number` 原始数值 + `currency` + 可选 `used` / `reset_remaining`）；`raw` 是 API 原始响应（standalone 脚本的 `--json` 输出带，check-balance 不带）。
+- `envKey`：对应的 API Key 环境变量名。noop provider 为空字符串。
+- `fetchRaw`：返回 `{ result: BalanceResult, raw: unknown }`。`result` 是结构化数据（`balance: number` 原始数值 + `currency` + 可选 `used` / `reset_remaining`）；`raw` 是 API 原始响应（standalone 脚本的 `--json` 输出带，check-balance 不带）。**noop provider 不提供此字段**，check-balance.ts 检测到 `!provider.fetchRaw` 时直接输出厂商名称，不发起任何请求。
 
 **新增服务商**：在 `lib/providers/` 下加一个文件导出 Provider 对象，并在 `index.ts` 注册即可。
 
@@ -60,6 +62,16 @@ lib/
 `process.env.ANTHROPIC_BASE_URL` → `settings.ANTHROPIC_BASE_URL`（来自 `~/.claude/settings.json` 的 `env` 字段），取其 hostname 后在 `providers[].domains` 中做精确匹配。未匹配到任何 provider 时 `--json` 模式输出错误 JSON（附带 `baseUrl` 字段），普通模式通过 `stderr` 输出提示（包含 `baseUrl` 与 `model`）。`ANTHROPIC_MODEL` 仍会被读取，仅用于在 JSON 输出中透出当前模型名，不再参与路由。
 
 注意：domains 匹配的是 LLM 网关的 host（如 `api.minimaxi.com`），与余额接口的 host（可能是 `www.minimaxi.com`）可以不同——一个 provider 可以在 `domains` 里同时配置多个 host。
+
+当前注册的 Provider 及其域名：
+
+| Provider | domains | 类型 |
+| --- | --- | --- |
+| DeepSeek | `api.deepseek.com` | 余额查询 |
+| MiniMax | `www.minimaxi.com`, `api.minimaxi.com` | Token Plan 用量 |
+| Kimi | `api.moonshot.cn` | 余额查询 |
+| Xiaomi Mimo | `token-plan-cn.xiaomimimo.com` | noop（仅占位） |
+| 火山引擎 | `ark.cn-beijing.volces.com` | noop（仅占位） |
 
 ### 缓存
 
