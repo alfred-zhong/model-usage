@@ -10,7 +10,9 @@
     "deepseek": "bun lib/providers/deepseek.ts || tsx lib/providers/deepseek.ts",
     "minimax": "bun lib/providers/minimax.ts || tsx lib/providers/minimax.ts",
     "kimi": "bun lib/providers/kimi.ts || tsx lib/providers/kimi.ts",
-    "check": "bun check-balance.ts || tsx check-balance.ts"
+    "volcengine": "bun lib/providers/volcengine.ts || tsx lib/providers/volcengine.ts",
+    "check": "bun check-balance.ts || tsx check-balance.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

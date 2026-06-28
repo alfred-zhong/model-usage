@@ -5,13 +5,29 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
+import { lookupCreds } from "./lib/creds.ts";
 import { providers } from "./lib/providers/index.ts";
 import type { BalanceResult } from "./lib/providers/types.ts";
 
 export {};
 const CACHE_DIR = `${homedir()}/.cache/model-usage`;
 const CACHE_FILE = `${CACHE_DIR}/balance.json`;
-type CacheEntry = { balance: string; currency: string; extra?: string; ts: number };
+
+/**
+ * Cache schema 存原始数值（呼应 1B + OV-1 修正）：
+ * 旧版本 balance 字段存格式化展示串（如 "%4"），cache hit 路径再走 formatBalance
+ * 会做 100 - "%4" = NaN。新版本存数值，重加载时重建 BalanceResult 再格式化。
+ */
+type CacheTier = { used: number; reset_remaining?: string };
+type CacheEntry = {
+  /** 数值型 Provider 的原始 balance（如 96） */
+  balance: number;
+  currency: string;
+  /** 多窗口 Provider（如火山）的 tiers 原始数据 */
+  tiers?: CacheTier[];
+  extra?: string;
+  ts: number;
+};
 type Cache = Record<string, CacheEntry>;
 
 function loadSettings(): Record<string, string> {
@@ -49,8 +65,14 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
 
 /** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串。 */
 function formatBalance(r: BalanceResult): { balance: string; extra?: string } {
+  // 多窗口 Provider（火山）：tiers 数组 join
+  if (r.tiers && r.tiers.length > 0) {
+    const pct = r.tiers.map((t) => `%${t.used}`).join(", ");
+    const reset = r.tiers.map((t) => t.reset_remaining ?? "").join(", ");
+    return { balance: pct, extra: `重置: ${reset}` };
+  }
+  // 单窗口 percent（如 MiniMax）
   if (r.currency === "percent") {
-    // MiniMax：balance 是 remaining（剩余 %），按 used 展示
     const used = r.used ?? 100 - r.balance;
     const base = `%${used}`;
     if (r.reset_remaining) return { balance: base, extra: `重置: ${r.reset_remaining}` };
@@ -101,35 +123,59 @@ async function main() {
     const cache = loadCache();
     const entry = cache[provider.name];
     if (entry && Date.now() - entry.ts < ttlMs) {
-      const result = { balance: entry.balance, currency: entry.currency, extra: entry.extra };
+      // 从 cache entry 重建 BalanceResult，再走同一 formatBalance 路径（避免 %NaN）
+      const result: BalanceResult = entry.tiers
+        ? { balance: entry.balance, currency: entry.currency as "CNY" | "percent", tiers: entry.tiers }
+        : { balance: entry.balance, currency: entry.currency as "CNY" | "percent" };
+      const formatted = formatBalance(result);
       if (json) {
-        console.log(JSON.stringify({ provider: provider.name, model, cached: true, ...result }));
+        console.log(JSON.stringify({
+          provider: provider.name,
+          model,
+          cached: true,
+          balance: formatted.balance,
+          currency: result.currency,
+          ...(formatted.extra ? { extra: formatted.extra } : {}),
+        }));
       } else {
-        console.log(result.extra ? `${provider.name} (${result.balance}，${result.extra})` : `${provider.name} (${result.balance})`);
+        console.log(formatted.extra
+          ? `${provider.name} (${formatted.balance}，${formatted.extra})`
+          : `${provider.name} (${formatted.balance})`);
       }
       return;
     }
   }
 
-  const apiKey = process.env[provider.envKey] || settings[provider.envKey] || settings.ANTHROPIC_AUTH_TOKEN || null;
-  if (!apiKey) {
+  // 凭据查找：双 Key (envKeys) / 单 Key (envKey) / fallback ANTHROPIC_AUTH_TOKEN
+  // 双 Key 不对 ANTHROPIC_AUTH_TOKEN fallback —— AK/SK 是控制面 OpenAPI 的两套独立凭据
+  const env: Record<string, string | undefined> = {
+    ...process.env as Record<string, string | undefined>,
+    ...settings,
+  };
+  const creds = lookupCreds(provider, env, true);
+  if (!creds) {
+    const missingKey = provider.envKeys
+      ? `${provider.envKeys[0]} 或 ${provider.envKeys[1]}`
+      : provider.envKey ?? "(未配置)";
     if (json) {
-      console.log(JSON.stringify({ error: `缺少 ${provider.envKey}`, model }));
+      console.log(JSON.stringify({ error: `缺少 ${missingKey}`, model }));
     } else {
-      console.log(`缺少 ${provider.envKey}`);
+      console.log(`缺少 ${missingKey}`);
     }
     return;
   }
 
   try {
-    const { result } = await provider.fetchRaw(apiKey);
+    const { result } = await provider.fetchRaw(creds);
     const formatted = formatBalance(result);
 
     if (ttlMs > 0) {
       const cache = loadCache();
+      // 写 cache 存原始数值（呼应 1B），format 串仅用于 stderr/stdout 输出
       cache[provider.name] = {
-        balance: formatted.balance,
+        balance: result.balance,
         currency: result.currency,
+        tiers: result.tiers,
         extra: formatted.extra,
         ts: Date.now(),
       };
