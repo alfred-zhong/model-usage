@@ -14,17 +14,25 @@ const CACHE_DIR = `${homedir()}/.cache/model-usage`;
 const CACHE_FILE = `${CACHE_DIR}/balance.json`;
 
 /**
- * Cache schema 存原始数值（呼应 1B + OV-1 修正）：
- * 旧版本 balance 字段存格式化展示串（如 "%4"），cache hit 路径再走 formatBalance
- * 会做 100 - "%4" = NaN。新版本存数值，重加载时重建 BalanceResult 再格式化。
+ * Cache schema 存原始数值（呼应 1B + OV-1 / OV-3 修正）：
+ * - 旧版本 balance 字段存格式化展示串（如 "%4"），cache hit 路径再走 formatBalance
+ *   会做 100 - "%4" = NaN。新版本存数值，重加载时重建 BalanceResult 再格式化。
+ * - OV-3：单窗口 percent Provider（如 MiniMax）的 used / reset_remaining 也必须存
+ *   原始值；否则 cache hit 重建的 BalanceResult 缺失这两个字段，formatBalance 的
+ *   percent 分支只输出 `%X`，不再输出 `重置: XhYm`。
  */
 type CacheTier = { used: number; reset_remaining?: string };
-type CacheEntry = {
+export type CacheEntry = {
   /** 数值型 Provider 的原始 balance（如 96） */
   balance: number;
   currency: string;
+  /** MiniMax 这类单窗口 percent Provider 的已用百分比（来自 provider.fetchRaw） */
+  used?: number;
+  /** 单窗口 percent Provider 的重置倒计时（格式化串，如 "3h22m"） */
+  reset_remaining?: string;
   /** 多窗口 Provider（如火山）的 tiers 原始数据 */
   tiers?: CacheTier[];
+  /** 格式化后的展示串缓存（向后兼容旧 cache 文件；不参与格式重建） */
   extra?: string;
   ts: number;
 };
@@ -64,7 +72,7 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
 }
 
 /** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串。 */
-function formatBalance(r: BalanceResult): { balance: string; extra?: string } {
+export function formatBalance(r: BalanceResult): { balance: string; extra?: string } {
   // 多窗口 Provider（火山）：tiers 数组 join
   if (r.tiers && r.tiers.length > 0) {
     const pct = r.tiers.map((t) => `%${t.used}`).join(", ");
@@ -123,10 +131,14 @@ async function main() {
     const cache = loadCache();
     const entry = cache[provider.name];
     if (entry && Date.now() - entry.ts < ttlMs) {
-      // 从 cache entry 重建 BalanceResult，再走同一 formatBalance 路径（避免 %NaN）
-      const result: BalanceResult = entry.tiers
-        ? { balance: entry.balance, currency: entry.currency as "CNY" | "percent", tiers: entry.tiers }
-        : { balance: entry.balance, currency: entry.currency as "CNY" | "percent" };
+      // 从 cache entry 重建 BalanceResult，再走同一 formatBalance 路径（避免 %NaN / 丢 reset_remaining）
+      const result: BalanceResult = {
+        balance: entry.balance,
+        currency: entry.currency as "CNY" | "percent",
+        ...(entry.used !== undefined ? { used: entry.used } : {}),
+        ...(entry.reset_remaining ? { reset_remaining: entry.reset_remaining } : {}),
+        ...(entry.tiers ? { tiers: entry.tiers } : {}),
+      };
       const formatted = formatBalance(result);
       if (json) {
         console.log(JSON.stringify({
@@ -171,10 +183,12 @@ async function main() {
 
     if (ttlMs > 0) {
       const cache = loadCache();
-      // 写 cache 存原始数值（呼应 1B），format 串仅用于 stderr/stdout 输出
+      // 写 cache 存原始数值（呼应 1B + OV-3），format 串仅用于向后兼容旧 cache 文件
       cache[provider.name] = {
         balance: result.balance,
         currency: result.currency,
+        used: result.used,
+        reset_remaining: result.reset_remaining,
         tiers: result.tiers,
         extra: formatted.extra,
         ts: Date.now(),
@@ -202,4 +216,8 @@ async function main() {
   }
 }
 
-main();
+// ESM 自检测：仅当本文件作为入口脚本运行时执行 main()，被 bun test 导入时不触发。
+// 与 lib/providers/<name>.ts 的自调用块风格一致。
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

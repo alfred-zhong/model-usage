@@ -85,7 +85,9 @@ lib/
   - 覆盖方式：`--cache-ttl N`（秒）或环境变量 `BALANCE_CACHE_TTL`（秒）；`ttlMs > 0` 才启用缓存
   - 跳过方式：`--force`
   - 写入失败被静默忽略
-- **缓存内容**：存 `BalanceResult` 的**原始数值**（`balance` + `currency` + 可选 `tiers`），不存格式化展示串。cache hit 路径重建 `BalanceResult` 后走与 live 路径同一 `formatBalance()` —— 避免 `100 - "%4"` 这类 `%NaN` bug
+- **缓存内容**：存 `BalanceResult` 的**原始数值**（`balance` + `currency` + 单窗口 Provider 还要存 `used` + `reset_remaining` + 可选 `tiers`），不存格式化展示串。cache hit 路径重建 `BalanceResult` 后走与 live 路径同一 `formatBalance()` —— 避免两类 bug：
+  - **OV-1（数值）**：旧版 `balance` 存 `"%4"`，`formatBalance()` 走 `100 - "%4"` = NaN
+  - **OV-3（reset_remaining 丢失）**：单窗口 percent Provider（如 MiniMax）的 `used` / `reset_remaining` 必须存原始值；只存格式化后的 `extra` 会导致 cache hit 退化为只显示 `%X` 而丢 `重置: XhYm`
 - **缓存写入时机**：`check-balance.ts` 每次成功调用 `provider.fetchRaw()` 后写入；`raw` 不写入
 
 ### Key 查找
