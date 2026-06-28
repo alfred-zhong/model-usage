@@ -9,7 +9,7 @@ import { lookupCreds } from "./lib/creds.ts";
 import { providers } from "./lib/providers/index.ts";
 import type { BalanceResult } from "./lib/providers/types.ts";
 
-export {};
+export { };
 const CACHE_DIR = `${homedir()}/.cache/model-usage`;
 const CACHE_FILE = `${CACHE_DIR}/balance.json`;
 
@@ -75,8 +75,8 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
 export function formatBalance(r: BalanceResult): { balance: string; extra?: string } {
   // 多窗口 Provider（火山）：tiers 数组 join
   if (r.tiers && r.tiers.length > 0) {
-    const pct = r.tiers.map((t) => `%${t.used}`).join(", ");
-    const reset = r.tiers.map((t) => t.reset_remaining ?? "").join(", ");
+    const pct = r.tiers.map((t) => `%${t.used}`).join(" ");
+    const reset = r.tiers.map((t) => t.reset_remaining ?? "-").join(" ");
     return { balance: pct, extra: `重置: ${reset}` };
   }
   // 单窗口 percent（如 MiniMax）

@@ -100,7 +100,7 @@ lib/
 ### 输出格式
 
 - `check-balance.ts`：
-  - 默认：纯文本余额。多窗口 Provider（火山）输出 `provider (X%, Y%, Z% 重置: A, B, C)`；单窗口 percent Provider（MiniMax）多一个 `重置: XhYm` 后缀
+  - 默认：纯文本余额。多窗口 Provider（火山）输出 `provider (X% Y% Z%，重置: A B C)`，tier 缺重置时间时用 `-` 占位（如 `重置: - 2h56m 18d2h`）；单窗口 percent Provider（MiniMax）多一个 `重置: XhYm` 后缀
   - `--json`：结构化 JSON，错误也走 JSON（`{ error, model }` / `{ provider, model, balance, currency, extra?, cached? }`），**不含 `raw` 字段**
   - 输出通道：所有输出走 `console.log`（stdout），不退出（避免阻塞 Claude 等调用方）
 - `lib/providers/<name>.ts`（standalone）：

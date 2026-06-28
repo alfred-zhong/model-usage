@@ -70,7 +70,7 @@ describe("formatBalance", () => {
   });
 
   describe("多窗口 tiers（火山）", () => {
-    test("3 个 tier + 各自 reset_remaining → '%X, %Y, %Z，重置: A, B, C'", () => {
+    test("3 个 tier + 各自 reset_remaining → '%X %Y %Z，重置: A B C'", () => {
       const result = rebuildFromCache({
         balance: 0,
         currency: "percent",
@@ -82,19 +82,19 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%0, %12, %15",
-        extra: "重置: 3h22m, 4h19m, 18d4h",
+        balance: "%0 %12 %15",
+        extra: "重置: 3h22m 4h19m 18d4h",
       });
     });
 
-    test("tier 缺 reset_remaining 时拼接空字符串", () => {
+    test("tier 缺 reset_remaining 时用 '-' 占位", () => {
       const result = rebuildFromCache({
         balance: 0,
         currency: "percent",
         tiers: [{ used: 5 }, { used: 10, reset_remaining: "2h" }],
         ts: 0,
       });
-      expect(formatBalance(result).extra).toBe("重置: , 2h");
+      expect(formatBalance(result).extra).toBe("重置: - 2h");
     });
   });
 

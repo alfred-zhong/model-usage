@@ -42,7 +42,7 @@
 import { createHmac, createHash } from "node:crypto";
 import { manualFetch } from "../manualFetch.ts";
 import { runProvider } from "../runProvider.ts";
-import type { BalanceTier, Provider, ProviderResponse } from "./types.ts";
+import type { BalanceTier, Provider } from "./types.ts";
 
 // ── 常量 ────────────────────────────────────────────────────────────
 
@@ -448,8 +448,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   await runProvider(provider, {
     formatText: (r) => {
-      const pct = r.tiers!.map((t) => `%${t.used}`).join(", ");
-      const reset = r.tiers!.map((t) => t.reset_remaining ?? "").join(", ");
+      const pct = r.tiers!.map((t) => `%${t.used}`).join(" ");
+      const reset = r.tiers!.map((t) => t.reset_remaining ?? "-").join(" ");
       return `Coding Plan: ${pct} 重置: ${reset}`;
     },
   });
