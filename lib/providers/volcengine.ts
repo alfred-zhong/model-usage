@@ -318,13 +318,29 @@ export function parseF64(v: unknown): number | null {
   return null;
 }
 
-/** 从 ResetTime 字段提取剩余秒数；`-1` 等负值视为无重置。 */
-export function parseResetSeconds(v: unknown): number | null {
+/**
+ * 从 ResetTime 字段提取剩余秒数；`-1` 等负值视为无重置。
+ *
+ * API 实际返回的是**绝对 unix 时间戳**（秒级，~1.78e9），不是相对剩余秒数。
+ * 旧启发式 `n < 1e12` 阈值太宽，把这种时间戳当剩余秒数，导致 `20632d` 这种输出。
+ *
+ * 新启发式：
+ * - `n >= 1e12`：unix 时间戳（毫秒），先除 1000
+ * - `1e9 <= n < 1e12`：unix 时间戳（秒），2001 年之后
+ * - `n < 1e9`：相对剩余秒数（最长 ~31 年，足够覆盖所有 quota 窗口）
+ *
+ * `nowMs` 参数用于单测做确定性比对（避免依赖 Date.now）。
+ */
+export function parseResetSeconds(v: unknown, nowMs: number = Date.now()): number | null {
   const n = parseF64(v);
   if (n === null) return null;
   if (n <= 0) return null; // 含 -1 sentinel
-  // 简单启发式：< 1e12 视为秒（一般不会超过 ~30000 年）
-  return n < 1e12 ? n : Math.floor(n / 1000);
+  if (n >= 1e9) {
+    const targetSec = n >= 1e12 ? Math.floor(n / 1000) : n;
+    const remaining = targetSec - Math.floor(nowMs / 1000);
+    return remaining > 0 ? remaining : null;
+  }
+  return n;
 }
 
 /**
@@ -353,11 +369,12 @@ export function parseCodingTiers(result: Record<string, unknown>): BalanceTier[]
     const window = volcCodingWindow(label);
     if (!window || seen.has(window)) continue;
     seen.add(window);
-    const used =
+    const used = Math.round(
       parseF64(item.Percent) ??
       parseF64(item.UsedPercent) ??
       parseF64(item.UsagePercent) ??
-      0;
+      0,
+    );
     const resetSeconds = parseResetSeconds(item.ResetTime ?? item.ResetTimestamp);
     const tier: BalanceTier = { used };
     if (resetSeconds !== null) {

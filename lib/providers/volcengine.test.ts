@@ -8,6 +8,7 @@ import {
   volcExtractError,
   volcCodingWindow,
   parseCodingTiers,
+  parseResetSeconds,
   formatDuration,
 } from "./volcengine.ts";
 import type { BalanceTier } from "./types.ts";
@@ -323,6 +324,86 @@ describe("formatDuration", () => {
     expect(formatDuration(86400)).toBe("1d0h");
     expect(formatDuration(86400 + 4 * 3600)).toBe("1d4h");
     expect(formatDuration(18 * 86400 + 4 * 3600)).toBe("18d4h");
+  });
+});
+
+// ── parseCodingTiers: 百分比取整（防 %11.728692 这种噪声） ─────────
+
+describe("parseCodingTiers — 百分比取整", () => {
+  test("API 返回浮点 Percent → Math.round 后取整", () => {
+    // 用户实测：11.728692 / 14.748472000000001 / 0.005
+    const result = {
+      QuotaUsage: [
+        { Level: "session", Percent: 0.5, ResetTime: -1 },
+        { Level: "weekly", Percent: 11.728692, ResetTime: 10560 },
+        { Level: "monthly", Percent: 14.748472000000001, ResetTime: 1562400 },
+      ],
+    };
+    const tiers = parseCodingTiers(result);
+    expect(tiers[0].used).toBe(1); // 0.5 → 1
+    expect(tiers[1].used).toBe(12); // 11.728692 → 12
+    expect(tiers[2].used).toBe(15); // 14.748472000000001 → 15
+  });
+
+  test("整数 Percent 行为不变", () => {
+    const result = { QuotaUsage: [{ Level: "session", Percent: 5, ResetTime: 60 }] };
+    expect(parseCodingTiers(result)[0].used).toBe(5);
+  });
+
+  test("0 仍为 0（不被取整成负）", () => {
+    const result = { QuotaUsage: [{ Level: "session", Percent: 0, ResetTime: 100 }] };
+    expect(parseCodingTiers(result)[0].used).toBe(0);
+  });
+});
+
+// ── parseResetSeconds: unix 时间戳识别 ─────────────────────────────
+
+describe("parseResetSeconds — unix 时间戳 vs 相对秒数", () => {
+  // 固定 nowMs = 2026-06-28T00:00:00Z = 1782624000 秒
+  const NOW_MS = 1782624000 * 1000;
+
+  test("相对秒数（< 1e9）保持原样", () => {
+    expect(parseResetSeconds(7200, NOW_MS)).toBe(7200);
+    expect(parseResetSeconds(2592000, NOW_MS)).toBe(2592000);
+  });
+
+  test("unix 时间戳（秒，1e9 ~ 1e12）→ 减去 now", () => {
+    // 2026-06-28 + 2 hours
+    const futureSec = Math.floor(NOW_MS / 1000) + 7200;
+    expect(parseResetSeconds(futureSec, NOW_MS)).toBe(7200);
+  });
+
+  test("unix 时间戳（毫秒，>= 1e12）→ 除 1000 后减 now", () => {
+    const futureMs = NOW_MS + 7200 * 1000;
+    expect(parseResetSeconds(futureMs, NOW_MS)).toBe(7200);
+  });
+
+  test("过去的时间戳 → null", () => {
+    const pastSec = Math.floor(NOW_MS / 1000) - 100;
+    expect(parseResetSeconds(pastSec, NOW_MS)).toBe(null);
+  });
+
+  test("实际 API 输出示例：~1.78e9 时间戳 → 正确换算（不再是 20632d）", () => {
+    // 用户实测：API 返回 ~1782682176（相当于 NOW + 20632d → 旧 bug 会输出这个）
+    // 修复后：NOW + 5h2h56m → 应该得到合理剩余秒数
+    const fiveHoursLater = Math.floor(NOW_MS / 1000) + 5 * 3600 + 2 * 3600 + 56 * 60;
+    expect(parseResetSeconds(fiveHoursLater, NOW_MS)).toBe(5 * 3600 + 2 * 3600 + 56 * 60);
+
+    const eighteenDaysLater = Math.floor(NOW_MS / 1000) + 18 * 86400 + 2 * 3600;
+    expect(parseResetSeconds(eighteenDaysLater, NOW_MS)).toBe(18 * 86400 + 2 * 3600);
+  });
+
+  test("-1 sentinel 仍然 → null", () => {
+    expect(parseResetSeconds(-1, NOW_MS)).toBe(null);
+  });
+
+  test("0 仍然 → null（与 -1 等价）", () => {
+    expect(parseResetSeconds(0, NOW_MS)).toBe(null);
+  });
+
+  test("字符串数字 → 解析后走同一启发式", () => {
+    const futureSec = Math.floor(NOW_MS / 1000) + 3600;
+    expect(parseResetSeconds(String(futureSec), NOW_MS)).toBe(3600);
   });
 });
 
