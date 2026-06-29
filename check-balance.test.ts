@@ -30,8 +30,8 @@ function rebuildFromCache(entry: CacheEntry) {
 
 describe("formatBalance", () => {
   describe("单窗口 percent（MiniMax）", () => {
-    test("有 used + reset_remaining → '%X，重置: Y'（OV-3 主回归）", () => {
-      // 关键回归：不能只输出 %4，必须把 reset_remaining 透出去
+    test("有 used + reset_remaining → '%X - Y'（OV-3 主回归）", () => {
+      // 关键回归：reset_remaining 必须 inline 透出去，不能丢
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
@@ -40,8 +40,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%4",
-        extra: "重置: 3h22m",
+        balance: "%4 - 3h22m",
       });
     });
 
@@ -55,7 +54,7 @@ describe("formatBalance", () => {
       expect(formatBalance(result).balance).toBe("%4");
     });
 
-    test("reset_remaining 缺位时只输出 %X（不附加空 extra）", () => {
+    test("reset_remaining 缺位时只输出 %X（不带尾巴 '-'）", () => {
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
@@ -63,14 +62,15 @@ describe("formatBalance", () => {
         // 没有 reset_remaining
         ts: 0,
       });
-      const formatted = formatBalance(result);
-      expect(formatted.balance).toBe("%4");
-      expect(formatted.extra).toBeUndefined();
+      expect(formatBalance(result)).toEqual({
+        balance: "%4",
+      });
     });
   });
 
   describe("多窗口 tiers（火山）", () => {
-    test("3 个 tier + 各自 reset_remaining → '%X %Y %Z，重置: A B C'", () => {
+    test("3 个 tier + 各自 reset_remaining → '%X - A, %Y - B, %Z - C'（OV-3 主回归）", () => {
+      // 关键回归：每个 tier 的 reset_remaining 必须 inline 到自己的 percent 后面，不能丢
       const result = rebuildFromCache({
         balance: 0,
         currency: "percent",
@@ -82,19 +82,20 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%0 %12 %15",
-        extra: "重置: 3h22m 4h19m 18d4h",
+        balance: "%0 - 3h22m, %12 - 4h19m, %15 - 18d4h",
       });
     });
 
-    test("tier 缺 reset_remaining 时用 '-' 占位", () => {
+    test("tier 缺 reset_remaining 时只输出 %X（不带尾巴 '-'）", () => {
       const result = rebuildFromCache({
         balance: 0,
         currency: "percent",
         tiers: [{ used: 5 }, { used: 10, reset_remaining: "2h" }],
         ts: 0,
       });
-      expect(formatBalance(result).extra).toBe("重置: - 2h");
+      expect(formatBalance(result)).toEqual({
+        balance: "%5, %10 - 2h",
+      });
     });
   });
 
@@ -144,8 +145,7 @@ describe("CacheEntry schema", () => {
     };
     const result = rebuildFromCache(oldEntry);
     const formatted = formatBalance(result);
-    expect(formatted.balance).toBe("%4");
-    // 旧 cache 没有 reset_remaining 原始值时，extra 为空——下次刷新会写入新 schema
-    expect(formatted.extra).toBeUndefined();
+    // 旧 cache 没有 reset_remaining 原始值时，输出里没有 inline reset；下次刷新会写入新 schema
+    expect(formatted).toEqual({ balance: "%4" });
   });
 });

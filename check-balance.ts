@@ -71,20 +71,23 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
   return 60_000;
 }
 
+/** 把单 tier 格式化为 `%X`（无重置）或 `%X - YhZm`（有重置）。 */
+function formatTier(used: number, reset_remaining?: string): string {
+  return reset_remaining ? `%${used} - ${reset_remaining}` : `%${used}`;
+}
+
 /** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串。 */
-export function formatBalance(r: BalanceResult): { balance: string; extra?: string } {
-  // 多窗口 Provider（火山）：tiers 数组 join
+export function formatBalance(r: BalanceResult): { balance: string } {
+  // 多窗口 Provider（火山）：tiers 数组用 ', ' join；每个 tier 内联自己的重置时间
   if (r.tiers && r.tiers.length > 0) {
-    const pct = r.tiers.map((t) => `%${t.used}`).join(" ");
-    const reset = r.tiers.map((t) => t.reset_remaining ?? "-").join(" ");
-    return { balance: pct, extra: `重置: ${reset}` };
+    return {
+      balance: r.tiers.map((t) => formatTier(t.used, t.reset_remaining)).join(", "),
+    };
   }
-  // 单窗口 percent（如 MiniMax）
+  // 单窗口 percent（如 MiniMax）：inline reset
   if (r.currency === "percent") {
     const used = r.used ?? 100 - r.balance;
-    const base = `%${used}`;
-    if (r.reset_remaining) return { balance: base, extra: `重置: ${r.reset_remaining}` };
-    return { balance: base };
+    return { balance: formatTier(used, r.reset_remaining) };
   }
   // CNY
   return { balance: `¥${r.balance.toFixed(2)}` };
@@ -147,12 +150,9 @@ async function main() {
           cached: true,
           balance: formatted.balance,
           currency: result.currency,
-          ...(formatted.extra ? { extra: formatted.extra } : {}),
         }));
       } else {
-        console.log(formatted.extra
-          ? `${provider.name} (${formatted.balance}，${formatted.extra})`
-          : `${provider.name} (${formatted.balance})`);
+        console.log(`${provider.name} (${formatted.balance})`);
       }
       return;
     }
@@ -183,14 +183,13 @@ async function main() {
 
     if (ttlMs > 0) {
       const cache = loadCache();
-      // 写 cache 存原始数值（呼应 1B + OV-3），format 串仅用于向后兼容旧 cache 文件
+      // 写 cache 存原始数值（呼应 1B + OV-3）；旧 cache 文件读端的 `extra` 字段保留以兼容
       cache[provider.name] = {
         balance: result.balance,
         currency: result.currency,
         used: result.used,
         reset_remaining: result.reset_remaining,
         tiers: result.tiers,
-        extra: formatted.extra,
         ts: Date.now(),
       };
       saveCache(cache);
@@ -202,10 +201,9 @@ async function main() {
         model,
         balance: formatted.balance,
         currency: result.currency,
-        ...(formatted.extra ? { extra: formatted.extra } : {}),
       }));
     } else {
-      console.log(formatted.extra ? `${provider.name} (${formatted.balance}，${formatted.extra})` : `${provider.name} (${formatted.balance})`);
+      console.log(`${provider.name} (${formatted.balance})`);
     }
   } catch (err: unknown) {
     if (json) {

@@ -448,9 +448,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   await runProvider(provider, {
     formatText: (r) => {
-      const pct = r.tiers!.map((t) => `%${t.used}`).join(" ");
-      const reset = r.tiers!.map((t) => t.reset_remaining ?? "-").join(" ");
-      return `Coding Plan: ${pct} 重置: ${reset}`;
+      const fmt = (t: BalanceTier) =>
+        t.reset_remaining ? `%${t.used} - ${t.reset_remaining}` : `%${t.used}`;
+      return `Coding Plan: ${r.tiers!.map(fmt).join(", ")}`;
     },
   });
 }

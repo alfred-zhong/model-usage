@@ -87,7 +87,7 @@ lib/
   - 写入失败被静默忽略
 - **缓存内容**：存 `BalanceResult` 的**原始数值**（`balance` + `currency` + 单窗口 Provider 还要存 `used` + `reset_remaining` + 可选 `tiers`），不存格式化展示串。cache hit 路径重建 `BalanceResult` 后走与 live 路径同一 `formatBalance()` —— 避免两类 bug：
   - **OV-1（数值）**：旧版 `balance` 存 `"%4"`，`formatBalance()` 走 `100 - "%4"` = NaN
-  - **OV-3（reset_remaining 丢失）**：单窗口 percent Provider（如 MiniMax）的 `used` / `reset_remaining` 必须存原始值；只存格式化后的 `extra` 会导致 cache hit 退化为只显示 `%X` 而丢 `重置: XhYm`
+  - **OV-3（reset_remaining 丢失）**：单窗口 percent Provider（如 MiniMax）的 `used` / `reset_remaining` 必须存原始值；只存格式化的展示串会导致 cache hit 退化为只显示 `%X` 而丢 inline reset（`- XhYm` 后缀）
 - **缓存写入时机**：`check-balance.ts` 每次成功调用 `provider.fetchRaw()` 后写入；`raw` 不写入
 
 ### Key 查找
@@ -100,11 +100,14 @@ lib/
 ### 输出格式
 
 - `check-balance.ts`：
-  - 默认：纯文本余额。多窗口 Provider（火山）输出 `provider (X% Y% Z%，重置: A B C)`，tier 缺重置时间时用 `-` 占位（如 `重置: - 2h56m 18d2h`）；单窗口 percent Provider（MiniMax）多一个 `重置: XhYm` 后缀
-  - `--json`：结构化 JSON，错误也走 JSON（`{ error, model }` / `{ provider, model, balance, currency, extra?, cached? }`），**不含 `raw` 字段**
+  - 默认：纯文本余额。重置时间 **inline** 到对应 percent 后面（` - YhZm`），多 tier 之间用 `, ` 分隔
+    - 单窗口 percent Provider（MiniMax）示例：`minimax (4% - 4h11m)`；无重置时为 `minimax (4%)`
+    - 多窗口 Provider（火山）示例：`火山引擎 (0%, 0% - 6d13h, 15% - 17d13h)`；无重置的 tier 只输出 `%X`，不附加 `-` 尾巴
+    - CNY Provider（DeepSeek/Kimi）示例：`deepseek (¥12.50)`
+  - `--json`：结构化 JSON，错误也走 JSON（`{ error, model }` / `{ provider, model, balance, currency, cached? }`），**不含 `raw` 字段**
   - 输出通道：所有输出走 `console.log`（stdout），不退出（避免阻塞 Claude 等调用方）
 - `lib/providers/<name>.ts`（standalone）：
-  - 默认：带 `剩余:` / `5 小时:` / `Coding Plan:` 前缀
+  - 默认：带 `剩余:` / `5 小时:` / `Coding Plan:` 前缀，括号内格式同上（如 `5 小时: 4% - 4h11m`、`Coding Plan: 0%, 0% - 6d13h, 15% - 17d13h`）
   - `--json`：含 `raw` 原始响应字段
   - 输出通道：数据走 `console.log`（stdout），错误走 `console.error`（stderr）+ `process.exit(1)`
 
