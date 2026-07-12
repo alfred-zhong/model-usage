@@ -71,9 +71,9 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
   return 60_000;
 }
 
-/** 把单 tier 格式化为 `%X`（无重置）或 `%X - YhZm`（有重置）。 */
+/** 把单 tier 格式化为 `%X`（无重置）或 `%X: YhZm`（有重置）。 */
 function formatTier(used: number, reset_remaining?: string): string {
-  return reset_remaining ? `%${used} - ${reset_remaining}` : `%${used}`;
+  return reset_remaining ? `%${used}: ${reset_remaining}` : `%${used}`;
 }
 
 /** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串。 */

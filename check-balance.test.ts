@@ -30,7 +30,7 @@ function rebuildFromCache(entry: CacheEntry) {
 
 describe("formatBalance", () => {
   describe("单窗口 percent（MiniMax）", () => {
-    test("有 used + reset_remaining → '%X - Y'（OV-3 主回归）", () => {
+    test("有 used + reset_remaining → '%X: Y'（OV-3 主回归）", () => {
       // 关键回归：reset_remaining 必须 inline 透出去，不能丢
       const result = rebuildFromCache({
         balance: 96,
@@ -40,7 +40,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%4 - 3h22m",
+        balance: "%4: 3h22m",
       });
     });
 
@@ -54,7 +54,7 @@ describe("formatBalance", () => {
       expect(formatBalance(result).balance).toBe("%4");
     });
 
-    test("reset_remaining 缺位时只输出 %X（不带尾巴 '-'）", () => {
+    test("reset_remaining 缺位时只输出 %X（不带 ':' 尾巴）", () => {
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
@@ -69,7 +69,7 @@ describe("formatBalance", () => {
   });
 
   describe("多窗口 tiers（火山）", () => {
-    test("3 个 tier + 各自 reset_remaining → '%X - A, %Y - B, %Z - C'（OV-3 主回归）", () => {
+    test("3 个 tier + 各自 reset_remaining → '%X: A, %Y: B, %Z: C'（OV-3 主回归）", () => {
       // 关键回归：每个 tier 的 reset_remaining 必须 inline 到自己的 percent 后面，不能丢
       const result = rebuildFromCache({
         balance: 0,
@@ -82,11 +82,11 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%0 - 3h22m, %12 - 4h19m, %15 - 18d4h",
+        balance: "%0: 3h22m, %12: 4h19m, %15: 18d4h",
       });
     });
 
-    test("tier 缺 reset_remaining 时只输出 %X（不带尾巴 '-'）", () => {
+    test("tier 缺 reset_remaining 时只输出 %X（不带 ':' 尾巴）", () => {
       const result = rebuildFromCache({
         balance: 0,
         currency: "percent",
@@ -94,7 +94,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%5, %10 - 2h",
+        balance: "%5, %10: 2h",
       });
     });
   });

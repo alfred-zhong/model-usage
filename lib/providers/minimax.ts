@@ -52,6 +52,6 @@ export default provider;
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   await runProvider(provider, {
-    formatText: (r) => `5 小时: %${r.used} - ${r.reset_remaining}`,
+    formatText: (r) => `5 小时: %${r.used}: ${r.reset_remaining}`,
   });
 }

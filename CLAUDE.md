@@ -100,9 +100,9 @@ lib/
 ### 输出格式
 
 - `check-balance.ts`：
-  - 默认：纯文本余额。重置时间 **inline** 到对应 percent 后面（` - YhZm`），多 tier 之间用 `, ` 分隔
-    - 单窗口 percent Provider（MiniMax）示例：`minimax (4% - 4h11m)`；无重置时为 `minimax (4%)`
-    - 多窗口 Provider（火山）示例：`火山引擎 (0%, 0% - 6d13h, 15% - 17d13h)`；无重置的 tier 只输出 `%X`，不附加 `-` 尾巴
+  - 默认：纯文本余额。重置时间 **inline** 到对应 percent 后面（`: YhZm`），多 tier 之间用 `, ` 分隔
+    - 单窗口 percent Provider（MiniMax）示例：`minimax (4%: 4h11m)`；无重置时为 `minimax (4%)`
+    - 多窗口 Provider（火山）示例：`火山引擎 (0%, 0%: 6d13h, 15%: 17d13h)`；无重置的 tier 只输出 `%X`，不附加 `:` 尾巴
     - CNY Provider（DeepSeek/Kimi）示例：`deepseek (¥12.50)`
   - `--json`：结构化 JSON，错误也走 JSON（`{ error, model }` / `{ provider, model, balance, currency, cached? }`），**不含 `raw` 字段**
   - 输出通道：所有输出走 `console.log`（stdout），不退出（避免阻塞 Claude 等调用方）

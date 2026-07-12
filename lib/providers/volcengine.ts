@@ -449,7 +449,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   await runProvider(provider, {
     formatText: (r) => {
       const fmt = (t: BalanceTier) =>
-        t.reset_remaining ? `%${t.used} - ${t.reset_remaining}` : `%${t.used}`;
+        t.reset_remaining ? `%${t.used}: ${t.reset_remaining}` : `%${t.used}`;
       return `Coding Plan: ${r.tiers!.map(fmt).join(", ")}`;
     },
   });
