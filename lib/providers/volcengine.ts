@@ -399,7 +399,7 @@ export function formatDuration(seconds: number): string {
 // ── Provider ────────────────────────────────────────────────────────
 
 const provider: Provider = {
-  name: "火山引擎",
+  name: "火山方舟",
   envKeys: ["VOLCENGINE_ACCESS_KEY_ID", "VOLCENGINE_SECRET_ACCESS_KEY"],
   domains: ["ark.cn-beijing.volces.com"],
   fetchRaw: async (creds) => {
