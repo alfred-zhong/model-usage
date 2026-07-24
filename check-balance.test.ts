@@ -11,6 +11,11 @@
 
 import { describe, test, expect } from "bun:test";
 import { formatBalance, type CacheEntry } from "./check-balance.ts";
+import { GREEN, ORANGE, RED } from "./lib/colors.ts";
+
+const G = GREEN;   // shorthand for readability
+const O = ORANGE;
+const R = RED;
 
 // Helper: 模拟 cache hit 路径里 cache entry → BalanceResult 的重建
 // 这一段是从 check-balance.ts 的 `if (entry && Date.now() - entry.ts < ttlMs)`
@@ -40,7 +45,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%4: 3h22m",
+        balance: `${G}%4${G}: 3h22m`,
       });
     });
 
@@ -51,7 +56,7 @@ describe("formatBalance", () => {
         // 没有 used
         ts: 0,
       });
-      expect(formatBalance(result).balance).toBe("%4");
+      expect(formatBalance(result).balance).toBe(`${G}%4${G}`);
     });
 
     test("reset_remaining 缺位时只输出 %X（不带 ':' 尾巴）", () => {
@@ -63,7 +68,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%4",
+        balance: `${G}%4${G}`,
       });
     });
   });
@@ -82,7 +87,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%0: 3h22m, %12: 4h19m, %15: 18d4h",
+        balance: `${G}%0${G}: 3h22m, ${G}%12${G}: 4h19m, ${G}%15${G}: 18d4h`,
       });
     });
 
@@ -94,7 +99,7 @@ describe("formatBalance", () => {
         ts: 0,
       });
       expect(formatBalance(result)).toEqual({
-        balance: "%5, %10: 2h",
+        balance: `${G}%5${G}, ${G}%10${G}: 2h`,
       });
     });
   });
@@ -106,7 +111,8 @@ describe("formatBalance", () => {
         currency: "CNY",
         ts: 0,
       });
-      expect(formatBalance(result)).toEqual({ balance: "¥12.50" });
+      // balance=12.5 >=10 但 <20 → 橙色
+      expect(formatBalance(result)).toEqual({ balance: `${O}¥12.50` });
     });
   });
 });
@@ -146,6 +152,6 @@ describe("CacheEntry schema", () => {
     const result = rebuildFromCache(oldEntry);
     const formatted = formatBalance(result);
     // 旧 cache 没有 reset_remaining 原始值时，输出里没有 inline reset；下次刷新会写入新 schema
-    expect(formatted).toEqual({ balance: "%4" });
+    expect(formatted).toEqual({ balance: `${G}%4${G}` });
   });
 });

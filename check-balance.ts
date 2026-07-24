@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { lookupCreds } from "./lib/creds.ts";
 import { providers } from "./lib/providers/index.ts";
 import type { BalanceResult } from "./lib/providers/types.ts";
+import { GREEN, RESET, percentColor, cnyColor } from "./lib/colors.ts";
 
 export { };
 const CACHE_DIR = `${homedir()}/.cache/model-usage`;
@@ -71,26 +72,30 @@ function parseTtl(args: string[], settings: Record<string, string>): number {
   return 60_000;
 }
 
-/** 把单 tier 格式化为 `%X`（无重置）或 `%X: YhZm`（有重置）。 */
-function formatTier(used: number, reset_remaining?: string): string {
-  return reset_remaining ? `%${used}: ${reset_remaining}` : `%${used}`;
-}
-
-/** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串。 */
-export function formatBalance(r: BalanceResult): { balance: string } {
+/** 把 BalanceResult（原始数值）格式化成 check-balance 风格的展示字符串（默认含颜色）。 */
+export function formatBalance(r: BalanceResult, opts?: { color?: boolean }): { balance: string } {
+  const colorize = opts?.color !== false;
   // 多窗口 Provider（火山）：tiers 数组用 ', ' join；每个 tier 内联自己的重置时间
+  // 仅 %X 着色，冒号与重置时间还原为绿色
   if (r.tiers && r.tiers.length > 0) {
     return {
-      balance: r.tiers.map((t) => formatTier(t.used, t.reset_remaining)).join(", "),
+      balance: r.tiers.map((t) => {
+        let text = colorize ? `${percentColor(t.used)}%${t.used}${GREEN}` : `%${t.used}`;
+        if (t.reset_remaining) text += `: ${t.reset_remaining}`;
+        return text;
+      }).join(", "),
     };
   }
-  // 单窗口 percent（如 MiniMax）：inline reset
+  // 单窗口 percent（如 MiniMax）：inline reset；仅 %X 着色
   if (r.currency === "percent") {
     const used = r.used ?? 100 - r.balance;
-    return { balance: formatTier(used, r.reset_remaining) };
+    let text = colorize ? `${percentColor(used)}%${used}${GREEN}` : `%${used}`;
+    if (r.reset_remaining) text += `: ${r.reset_remaining}`;
+    return { balance: text };
   }
   // CNY
-  return { balance: `¥${r.balance.toFixed(2)}` };
+  const text = `¥${r.balance.toFixed(2)}`;
+  return { balance: colorize ? `${cnyColor(r.balance)}${text}` : text };
 }
 
 async function main() {
@@ -124,7 +129,7 @@ async function main() {
     if (json) {
       console.log(JSON.stringify({ provider: provider.name, model, noApi: true }));
     } else {
-      console.log(provider.name);
+      console.log(`${GREEN}${provider.name}${RESET}`);
     }
     return;
   }
@@ -142,7 +147,7 @@ async function main() {
         ...(entry.reset_remaining ? { reset_remaining: entry.reset_remaining } : {}),
         ...(entry.tiers ? { tiers: entry.tiers } : {}),
       };
-      const formatted = formatBalance(result);
+      const formatted = formatBalance(result, { color: !json });
       if (json) {
         console.log(JSON.stringify({
           provider: provider.name,
@@ -152,7 +157,7 @@ async function main() {
           currency: result.currency,
         }));
       } else {
-        console.log(`${provider.name} (${formatted.balance})`);
+        console.log(`${GREEN}${provider.name}${RESET} ${GREEN}(${formatted.balance})${RESET}`);
       }
       return;
     }
@@ -179,7 +184,7 @@ async function main() {
 
   try {
     const { result } = await provider.fetchRaw(creds);
-    const formatted = formatBalance(result);
+    const formatted = formatBalance(result, { color: !json });
 
     if (ttlMs > 0) {
       const cache = loadCache();
@@ -203,7 +208,7 @@ async function main() {
         currency: result.currency,
       }));
     } else {
-      console.log(`${provider.name} (${formatted.balance})`);
+      console.log(`${GREEN}${provider.name}${RESET} ${GREEN}(${formatted.balance})${RESET}`);
     }
   } catch (err: unknown) {
     if (json) {

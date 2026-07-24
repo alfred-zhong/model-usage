@@ -4,6 +4,7 @@
 import { timeoutFetchJson } from "../timeoutFetch.ts";
 import { runProvider } from "../runProvider.ts";
 import type { Provider, ProviderResponse } from "./types.ts";
+import { GREEN, percentColor, RESET } from "../colors.ts";
 
 type MinimaxRaw = {
   model_remains?: Array<{
@@ -52,6 +53,9 @@ export default provider;
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   await runProvider(provider, {
-    formatText: (r) => `5 小时: %${r.used}: ${r.reset_remaining}`,
+    formatText: (r) => {
+      const used = r.used ?? 0;
+      return `${GREEN}5 小时: ${percentColor(used)}%${used}${GREEN}: ${r.reset_remaining}${RESET}`;
+    },
   });
 }

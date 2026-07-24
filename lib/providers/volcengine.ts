@@ -43,6 +43,7 @@ import { createHmac, createHash } from "node:crypto";
 import { manualFetch } from "../manualFetch.ts";
 import { runProvider } from "../runProvider.ts";
 import type { BalanceTier, Provider } from "./types.ts";
+import { GREEN, percentColor, RESET } from "../colors.ts";
 
 // ── 常量 ────────────────────────────────────────────────────────────
 
@@ -448,9 +449,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   await runProvider(provider, {
     formatText: (r) => {
-      const fmt = (t: BalanceTier) =>
-        t.reset_remaining ? `%${t.used}: ${t.reset_remaining}` : `%${t.used}`;
-      return `Coding Plan: ${r.tiers!.map(fmt).join(", ")}`;
+      const fmt = (t: BalanceTier) => {
+        let text = `${percentColor(t.used)}%${t.used}${GREEN}`;
+        if (t.reset_remaining) text += `: ${t.reset_remaining}`;
+        return text;
+      };
+      return `${GREEN}Coding Plan: ${r.tiers!.map(fmt).join(", ")}${RESET}`;
     },
   });
 }

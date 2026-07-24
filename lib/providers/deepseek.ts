@@ -4,6 +4,7 @@
 import { timeoutFetchJson } from "../timeoutFetch.ts";
 import { runProvider } from "../runProvider.ts";
 import type { Provider, ProviderResponse } from "./types.ts";
+import { GREEN, cnyColor, RESET } from "../colors.ts";
 
 type DeepseekRaw = {
   is_available?: boolean;
@@ -34,6 +35,9 @@ export default provider;
 // CLI 入口（ESM 自检测）：仅当本文件被直接执行时运行
 if (import.meta.url === `file://${process.argv[1]}`) {
   await runProvider(provider, {
-    formatText: (r) => `剩余: ¥${r.balance.toFixed(2)}`,
+    formatText: (r) => {
+      const color = cnyColor(r.balance);
+      return `${GREEN}剩余: ${color}¥${r.balance.toFixed(2)}${RESET}`;
+    },
   });
 }
