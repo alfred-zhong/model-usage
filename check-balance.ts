@@ -9,6 +9,7 @@ import { lookupCreds } from "./lib/creds.ts";
 import { providers } from "./lib/providers/index.ts";
 import type { BalanceResult } from "./lib/providers/types.ts";
 import { GREEN, RESET, percentColor, cnyColor } from "./lib/colors.ts";
+import { progressBar } from "./lib/progressBar.ts";
 
 export { };
 const CACHE_DIR = `${homedir()}/.cache/model-usage`;
@@ -86,10 +87,14 @@ export function formatBalance(r: BalanceResult, opts?: { color?: boolean }): { b
       }).join(", "),
     };
   }
-  // 单窗口 percent（如 MiniMax）：inline reset；仅 %X 着色
+  // 单窗口 percent（如 MiniMax）：bar + inline reset；`%X` 走阈值着色
+  // 注：多窗口分支（火山）和 CNY 分支不在 v1 bar 范围内，见 ADR-0001。
   if (r.currency === "percent") {
     const used = r.used ?? 100 - r.balance;
-    let text = colorize ? `${percentColor(used)}%${used}${GREEN}` : `%${used}`;
+    const bar = progressBar(used, 10, colorize);
+    let text = colorize
+      ? `${bar} ${percentColor(used)}%${used}${GREEN}`
+      : `${bar} %${used}`;
     if (r.reset_remaining) text += `: ${r.reset_remaining}`;
     return { balance: text };
   }

@@ -12,6 +12,7 @@
 import { describe, test, expect } from "bun:test";
 import { formatBalance, type CacheEntry } from "./check-balance.ts";
 import { GREEN, ORANGE, RED } from "./lib/colors.ts";
+import { progressBar } from "./lib/progressBar.ts";
 
 const G = GREEN;   // shorthand for readability
 const O = ORANGE;
@@ -35,8 +36,10 @@ function rebuildFromCache(entry: CacheEntry) {
 
 describe("formatBalance", () => {
   describe("单窗口 percent（MiniMax）", () => {
-    test("有 used + reset_remaining → '%X: Y'（OV-3 主回归）", () => {
-      // 关键回归：reset_remaining 必须 inline 透出去，不能丢
+    test("有 used + reset_remaining → 'bar %X: Y'（OV-3 主回归 + v1 bar 前缀）", () => {
+      // 关键回归：reset_remaining 必须 inline 透出去，不能丢。
+      // v1 同时新增：bar 紧贴 `%X` 之前。bar 由 progressBar(4) 生成
+      // （used=4 → GREEN 开 + 0 满格 + RESET + 10 空格的彩色串）。
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
@@ -44,22 +47,24 @@ describe("formatBalance", () => {
         reset_remaining: "3h22m",
         ts: 0,
       });
+      const bar = progressBar(4);
       expect(formatBalance(result)).toEqual({
-        balance: `${G}%4${G}: 3h22m`,
+        balance: `${bar} ${G}%4${G}: 3h22m`,
       });
     });
 
-    test("used 缺位时由 100 - balance 推导", () => {
+    test("used 缺位时由 100 - balance 推导（bar 按 4% 同形前置）", () => {
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
         // 没有 used
         ts: 0,
       });
-      expect(formatBalance(result).balance).toBe(`${G}%4${G}`);
+      const bar = progressBar(4);
+      expect(formatBalance(result).balance).toBe(`${bar} ${G}%4${G}`);
     });
 
-    test("reset_remaining 缺位时只输出 %X（不带 ':' 尾巴）", () => {
+    test("reset_remaining 缺位时只输出 'bar %X'（不带 ':' 尾巴）", () => {
       const result = rebuildFromCache({
         balance: 96,
         currency: "percent",
@@ -67,8 +72,9 @@ describe("formatBalance", () => {
         // 没有 reset_remaining
         ts: 0,
       });
+      const bar = progressBar(4);
       expect(formatBalance(result)).toEqual({
-        balance: `${G}%4${G}`,
+        balance: `${bar} ${G}%4${G}`,
       });
     });
   });
@@ -152,6 +158,8 @@ describe("CacheEntry schema", () => {
     const result = rebuildFromCache(oldEntry);
     const formatted = formatBalance(result);
     // 旧 cache 没有 reset_remaining 原始值时，输出里没有 inline reset；下次刷新会写入新 schema
-    expect(formatted).toEqual({ balance: `${G}%4${G}` });
+    // v1 增量：bar 按 `used = 4` 同样前置（progressBar(4) 已含完整 ANSI 拼接）。
+    const bar = progressBar(4);
+    expect(formatted).toEqual({ balance: `${bar} ${G}%4${G}` });
   });
 });
